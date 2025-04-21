@@ -1,4 +1,3 @@
-use crate::headers::DataDirectory;
 
 
 #[repr(C)]
@@ -8,7 +7,7 @@ pub struct DataDirectory {
     pub size: u32,            // rozmiar danych
 }
 
-const PE_SIGNATURE: u32 = 0x00004550;
+pub const PE_SIGNATURE: u32 = 0x00004550;
 
 
 #[repr(C)]
