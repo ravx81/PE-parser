@@ -1,22 +1,28 @@
-use pe_parser::parser::detect_architecture;
+use pe_parser::parser::PeFile;
 
 
 #[test]
 fn detect_x64(){
     let path = "tests/test.exe";
-    let arch = detect_architecture(path).expect("Should return x64");
-    assert_eq!(arch, "x64 (64‑bit)");
+    let pe = PeFile::parse(path).expect("failed to parse x64");
+    assert_eq!(pe.architecture(), "x64 (64‑bit)");
 }
 
 #[test]
 fn detect_x32(){
     let path = "tests/7z2409.exe";
-    let arch = detect_architecture(path).expect("Should return x86");
-    assert_eq!(arch, "x86 (32‑bit)");
+    let pe = PeFile::parse(path).expect("failed to parse x32");
+    assert_eq!(pe.architecture(), "x86 (32‑bit)");
 }
 #[test]
 fn detect_arm64(){
     let path: &str = "tests/7z2409-arm64.exe";
-    let arch  = detect_architecture(path).expect("Should return ARM64");
-    assert_eq!(arch, "ARM64");
+    let pe = PeFile::parse(path).expect("failed to parse ARM64");
+    assert_eq!(pe.architecture(), "ARM64");
 }
+#[test]
+fn test_file_header(){
+    let path: &str = "tests/test.exe";
+    let pe = PeFile::parse(path).expect("Failed");
+    pe.print_file_header();
+} 

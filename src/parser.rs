@@ -2,6 +2,9 @@ use std::ptr;
 use std::{fmt::format, fs};
 use std::convert::TryInto;
 use crate::headers::{DosHeader, NtHeaders64, PE_SIGNATURE, FileHeader, OptionalHeader32 ,OptionalHeader64};
+use chrono::prelude::DateTime;
+use chrono::Utc;
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 
 pub enum OptionalHeader {
@@ -14,7 +17,43 @@ pub struct PeFile {
     buffer: Vec<u8>, //whole memory in file
     e_lfanew: usize,
     file_header: FileHeader,
-    optional_header: OptionalHeader,
+    optional_header: Box<dyn OptionalHeaderView>,
+}
+
+pub trait OptionalHeaderView {
+    fn address_of_entry_point(&self) -> u32;
+    fn image_base(&self)            -> u64;
+    fn size_of_image(&self)         -> u32;
+    fn size_of_headers(&self)       -> u32;
+    fn section_alignment(&self)     -> u32;
+    fn file_alignment(&self)        -> u32;
+    fn subsystem(&self)             -> u16;   // możesz zwrócić własny enum Subsystem
+    fn dll_characteristics(&self)   -> u16;
+}
+
+impl OptionalHeaderView for OptionalHeader32 {
+    fn address_of_entry_point(&self) -> u32 { self.address_of_entry_point }
+    fn image_base(&self)            -> u64 { self.image_base as u64 }
+
+    fn size_of_image(&self)         -> u32 { self.size_of_image }
+    fn size_of_headers(&self)       -> u32 { self.size_of_headers }
+    fn section_alignment(&self)     -> u32 { self.section_alignment }
+    fn file_alignment(&self)        -> u32 { self.file_alignment }
+
+    fn subsystem(&self)             -> u16 { self.subsystem }
+    fn dll_characteristics(&self)   -> u16 { self.dll_characteristics }
+}
+impl OptionalHeaderView for OptionalHeader64 {
+    fn address_of_entry_point(&self) -> u32 { self.address_of_entry_point }
+    fn image_base(&self)            -> u64 { self.image_base }
+
+    fn size_of_image(&self)         -> u32 { self.size_of_image }
+    fn size_of_headers(&self)       -> u32 { self.size_of_headers }
+    fn section_alignment(&self)     -> u32 { self.section_alignment }
+    fn file_alignment(&self)        -> u32 { self.file_alignment }
+
+    fn subsystem(&self)             -> u16 { self.subsystem }
+    fn dll_characteristics(&self)   -> u16 { self.dll_characteristics }
 }
 
 impl PeFile{
@@ -38,35 +77,29 @@ impl PeFile{
 
         let magic = u16::from_le_bytes(buffer[oh_offset..oh_offset+2].try_into().unwrap());
 
-        let optional_header =  match magic {
-            0x10B => {
-                // PE32 optional header only for now, I'll change this unsafe later
-                let optional_header32: OptionalHeader32 = unsafe {
-                    ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader32)
-                };
-                OptionalHeader::Header32(optional_header32)
-            }
-            0x20B => {
-                    // PE32 optional header only for now, I'll this unsafe later
-                let optional_header64: OptionalHeader64 = unsafe {
-                    ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader64)
-                };
-                OptionalHeader::Header64(optional_header64)
-            }
-            other => {
-                return Err(format!("Unsupported optional‑header magic value: 0x{other:04X}"));
-            }
+        let optional_header: Box<dyn OptionalHeaderView> = match magic {
+            0x10B => Box::new(unsafe {
+                ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader32)
+            }),
+            0x20B => Box::new(unsafe {
+                ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader64)
+            }),
+            other => return Err(format!("Unsupported optional-header magic value: 0x{other:04X}")),
         };
 
-        Ok(PeFile { buffer, e_lfanew, file_header, optional_header})
-
+        Ok(Self { buffer, e_lfanew, file_header, optional_header})
+    
+    //from fileheader
     }
     pub fn number_of_sections(&self) -> u16 {
         self.file_header.number_of_sections
     }
     
-    pub fn timestamp(&self) -> u32 {
-        self.file_header.time_date_stamp
+    pub fn timestamp(&self) -> String {
+        let d = UNIX_EPOCH + Duration::from_secs(self.file_header.time_date_stamp as u64);
+        let datetime = DateTime::<Utc>::from(d);
+        let timestamp_str = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
+        timestamp_str
     }
     pub fn characteristics(&self) -> u16 {
         self.file_header.characteristics
@@ -82,6 +115,43 @@ impl PeFile{
             0xaa64 => "ARM64",
             _      => "Unknowed architecture",
         }
+    }
+
+    //from optionalheader
+
+    pub fn adres_of_entry_point(&self) -> u32 {
+        self.optional_header.address_of_entry_point()
+    }
+    pub fn image_base(&self) -> u64{
+        self.optional_header.image_base()
+    }
+    pub fn size_of_image(&self) -> u32{
+        self.optional_header.size_of_image()
+    }
+    pub fn size_of_headers(&self) -> u32 { 
+        self.optional_header.size_of_headers()
+    }
+    pub fn section_alignment(&self) -> u32 { 
+        self.optional_header.section_alignment()
+    }
+
+    pub fn file_alignment(&self) -> u32 { 
+        self.optional_header.file_alignment()
+    }
+    
+    pub fn subsystem(&self) -> u16 { 
+        self.optional_header.subsystem()
+    }
+    pub fn dll_characteristics(&self) -> u16 { 
+        self.optional_header.dll_characteristics()
+    }
+
+    pub fn print_file_header(&self){
+        println!("File header: \n --------------------- ");
+        println!("Machine: {}", self.architecture());
+        println!("Number of sections: {}", self.number_of_sections());
+        println!("Time date stamp: {}", self.timestamp());
+        println!("Characteristic: {}", self.characteristics());
     }
 }
 
