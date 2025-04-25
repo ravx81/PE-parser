@@ -1,4 +1,4 @@
-use std::ptr;
+use std::{ptr, result, vec};
 use std::{fmt::format, fs};
 use std::convert::TryInto;
 use crate::headers::{DosHeader, NtHeaders64, PE_SIGNATURE, FileHeader, OptionalHeader32 ,OptionalHeader64};
@@ -139,11 +139,38 @@ impl PeFile{
         self.optional_header.file_alignment()
     }
     
-    pub fn subsystem(&self) -> u16 { 
-        self.optional_header.subsystem()
+    pub fn subsystem(&self) -> &str { 
+        let number = self.optional_header.subsystem();
+        let result = match number{
+            2 => "Windows GUI (2)",
+            3 => "Windows Console (3)",
+            9 => "Windows CE GUI (9)",
+            _ => "Unknowed number",
+        };
+        result
     }
-    pub fn dll_characteristics(&self) -> u16 { 
-        self.optional_header.dll_characteristics()
+    pub fn dll_characteristics(&self) -> Vec<(u16, &'static str)> { 
+        let flag = self.optional_header.dll_characteristics();
+        let mut results = Vec::new();
+        let flag_descriptions = [
+            (0x0020, "HIGH_ENTROPY_VA"),
+            (0x0040, "DYNAMIC_BASE (ASLR)"),
+            (0x0080, "FORCE_INTEGRITY"),
+            (0x0100, "NX_COMPAT (DEP)"),
+            (0x0200, "NO_ISOLATION"),
+            (0x0400, "NO_SEH"),
+            (0x0800, "NO_BIND"),
+            (0x1000, "APPCONTAINER"),
+            (0x2000, "WDM_DRIVER"),
+            (0x4000, "GUARD_CF"),
+            (0x8000, "TERMINAL_SERVER_AWARE"),
+            ];
+        for (mask, description) in &flag_descriptions{
+            if flag & mask != 0{
+                results.push((*mask, *description));
+            }
+        }
+        results
     }
 
     pub fn print_file_header(&self){
@@ -152,6 +179,20 @@ impl PeFile{
         println!("Number of sections: {}", self.number_of_sections());
         println!("Time date stamp: {}", self.timestamp());
         println!("Characteristic: {}", self.characteristics());
+    }
+    pub fn print_optional_header(&self){
+        println!("Optional header: \n --------------------- ");
+        println!("Address of entry point: {}", self.adres_of_entry_point());
+        println!("Image base: {}", self.image_base());
+        println!("Section aligment: {}", self.section_alignment());
+        println!("File alignment: {}", self.file_alignment());
+        println!("Size of image: {}", self.size_of_image());
+        println!("Size of headers: {}", self.size_of_headers());
+        println!("Sub system: {}", self.subsystem());
+        println!("Dll characteristic: ");
+        for (mask, desc) in self.dll_characteristics(){
+            println!("Flag: 0x{:04x} - {}", mask, desc);
+        }
     }
 }
 

@@ -26,3 +26,9 @@ fn test_file_header(){
     let pe = PeFile::parse(path).expect("Failed");
     pe.print_file_header();
 } 
+#[test]
+fn test_optional_header(){
+    let path: &str = "tests/test.exe";
+    let pe = PeFile::parse(path).expect("Failed");
+    pe.print_optional_header();
+}
