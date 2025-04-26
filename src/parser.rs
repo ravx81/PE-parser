@@ -1,11 +1,11 @@
-use std::{ptr, result, vec};
+use std::{io, ptr, result, vec};
 use std::{fmt::format, fs};
 use std::convert::TryInto;
 use crate::headers::{DosHeader, NtHeaders64, PE_SIGNATURE, FileHeader, OptionalHeader32 ,OptionalHeader64};
 use chrono::prelude::DateTime;
 use chrono::Utc;
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
-
+use crate::errors::{Error, Result};
 
 pub enum OptionalHeader {
     Header32(OptionalHeader32),
@@ -57,8 +57,8 @@ impl OptionalHeaderView for OptionalHeader64 {
 }
 
 impl PeFile{
-    pub fn parse(path: &str) -> Result<Self, String> {
-        let buffer = fs::read(path).map_err(|e| format!("Error while reading file: {}", e))?;
+    pub fn parse(path: &str) -> Result<Self> {
+        let buffer = fs::read(path)?;
 
         // DOS header at 0x3C holds e_lfanew (4 bytes)
         let e_lfanew = {
@@ -76,7 +76,9 @@ impl PeFile{
 
 
         let magic = u16::from_le_bytes(buffer[oh_offset..oh_offset+2].try_into().unwrap());
-
+        if magic != 0x5A4D{
+           return Err(Error::InvalidMagic(magic.into()));
+        }
         let optional_header: Box<dyn OptionalHeaderView> = match magic {
             0x10B => Box::new(unsafe {
                 ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader32)
@@ -84,7 +86,7 @@ impl PeFile{
             0x20B => Box::new(unsafe {
                 ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader64)
             }),
-            other => return Err(format!("Unsupported optional-header magic value: 0x{other:04X}")),
+            other => return Err(Error::UnsupportedOptionalHeader(other)),
         };
 
         Ok(Self { buffer, e_lfanew, file_header, optional_header})

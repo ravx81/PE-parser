@@ -1,5 +1,5 @@
 use pe_parser::parser::PeFile;
-
+use pe_parser::Error;
 
 #[test]
 fn detect_x64(){
@@ -31,4 +31,9 @@ fn test_optional_header(){
     let path: &str = "tests/test.exe";
     let pe = PeFile::parse(path).expect("Failed");
     pe.print_optional_header();
+}
+#[test]
+fn test_errors(){
+    let e1 = Error::InvalidMagic(0);
+    println!("{e1}");
 }
