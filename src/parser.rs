@@ -1,3 +1,4 @@
+use core::error;
 use std::{io, ptr, result, vec};
 use std::{fmt::format, fs};
 use std::convert::TryInto;
@@ -59,27 +60,30 @@ impl OptionalHeaderView for OptionalHeader64 {
 impl PeFile{
     pub fn parse(path: &str) -> Result<Self> {
         let buffer = fs::read(path)?;
-
+        // checked if "MZ" is in file. 
+        let dos_magic = u16::from_le_bytes(buffer[0..2].try_into().unwrap());
+        if dos_magic != 0x5A4D {
+            return Err(Error::InvalidMagic(dos_magic));
+        }
 
         // DOS header at 0x3C holds e_lfanew (4 bytes)
         let e_lfanew = {
             let bytes: [u8; 4] = buffer[0x3C..0x40].try_into().unwrap();
             u32::from_le_bytes(bytes) as usize
         };
-
+        // file_header
         let fh_offset = e_lfanew + 4;
         let file_header: FileHeader = unsafe {
             //we read here struct from headers.rs (20 bytes)
             ptr::read_unaligned(buffer.as_ptr().add(fh_offset) as *const FileHeader)
         };
 
+        //optional header
         let oh_offset: usize = fh_offset + std::mem::size_of::<FileHeader>();
 
 
         let magic = u16::from_le_bytes(buffer[oh_offset..oh_offset+2].try_into().unwrap());
-        if magic != 0x5A4D{
-           return Err(Error::InvalidMagic(magic.into()));
-        }
+        
         let optional_header: Box<dyn OptionalHeaderView> = match magic {
             0x10B => Box::new(unsafe {
                 ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader32)
@@ -90,14 +94,7 @@ impl PeFile{
             other => return Err(Error::UnsupportedOptionalHeader(other)),
         };
 
-        match PeFile::parse(path){
-            Ok(pe) => {
-                println!("Everything is good");
-            }
-            Err(err) => {
-                eprintln!("Error: {}", err);
-            }
-        }
+    
 
         Ok(Self { buffer, e_lfanew, file_header, optional_header})
     //from fileheader
@@ -226,7 +223,15 @@ impl PeFile{
     }
     pub fn print_section_headers(&self){
         println!("SECTION HEADERS: \n --------------------- ");
-    
+        for section in self.parse_section_headers(){
+            let name = String::from_utf8_lossy(&section.name).to_string();
+            println!("{}", name);
+            println!("Virtual size: {}", section.virtual_size);
+            println!("Virtual address {}", section.virtual_address);
+            println!("Size of raw data {}", section.size_of_raw_data);
+            println!("Pointer to raw data {}", section.pointer_to_raw_data);
+            println!("Characteristics: {}", section.characteristics);
+        }
     }
 }
 

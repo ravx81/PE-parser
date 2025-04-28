@@ -37,3 +37,9 @@ fn test_errors(){
     let e1 = Error::InvalidMagic(4);
     println!("{e1}");
 }
+#[test]
+fn test_section_headers(){
+    let path: &str = "tests/test.exe";
+    let pe = PeFile::parse(path).expect("Failed");
+    pe.print_section_headers();
+}
