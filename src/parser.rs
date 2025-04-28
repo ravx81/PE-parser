@@ -1,12 +1,12 @@
 use std::{io, ptr, result, vec};
 use std::{fmt::format, fs};
 use std::convert::TryInto;
-use crate::headers::{DosHeader, NtHeaders64, PE_SIGNATURE, FileHeader, OptionalHeader32 ,OptionalHeader64};
+use crate::headers::{DosHeader, FileHeader, NtHeaders64, OptionalHeader32, OptionalHeader64, SectionHeader, PE_SIGNATURE};
 use chrono::prelude::DateTime;
 use chrono::Utc;
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use crate::errors::{Error, Result};
-
+use std::mem::size_of;
 pub enum OptionalHeader {
     Header32(OptionalHeader32),
     Header64(OptionalHeader64),
@@ -60,6 +60,7 @@ impl PeFile{
     pub fn parse(path: &str) -> Result<Self> {
         let buffer = fs::read(path)?;
 
+
         // DOS header at 0x3C holds e_lfanew (4 bytes)
         let e_lfanew = {
             let bytes: [u8; 4] = buffer[0x3C..0x40].try_into().unwrap();
@@ -89,8 +90,16 @@ impl PeFile{
             other => return Err(Error::UnsupportedOptionalHeader(other)),
         };
 
+        match PeFile::parse(path){
+            Ok(pe) => {
+                println!("Everything is good");
+            }
+            Err(err) => {
+                eprintln!("Error: {}", err);
+            }
+        }
+
         Ok(Self { buffer, e_lfanew, file_header, optional_header})
-    
     //from fileheader
     }
     pub fn number_of_sections(&self) -> u16 {
@@ -175,15 +184,34 @@ impl PeFile{
         results
     }
 
+    pub fn parse_section_headers(&self) -> Vec<SectionHeader>{
+        //section_offset = e_lfanew + PE_signature... 
+        let section_offset = self.e_lfanew + 4 + size_of::<crate::headers::FileHeader>() + self.file_header.size_of_optional_header as usize;
+        let number_of_sections = self.file_header.number_of_sections as usize;
+        let mut sections = Vec::with_capacity(number_of_sections);
+
+        // first section_header stars here
+        let base_ptr = unsafe { self.buffer.as_ptr().add(section_offset) as *const SectionHeader};
+
+        for i in 0..number_of_sections{
+            let ptr_section = unsafe {base_ptr.add(i)};
+
+            let section = unsafe {ptr::read_unaligned(ptr_section)};
+
+            sections.push(section);
+        }
+        sections
+    }
+
     pub fn print_file_header(&self){
-        println!("File header: \n --------------------- ");
+        println!("FILE HEADER: \n --------------------- ");
         println!("Machine: {}", self.architecture());
         println!("Number of sections: {}", self.number_of_sections());
         println!("Time date stamp: {}", self.timestamp());
         println!("Characteristic: {}", self.characteristics());
     }
     pub fn print_optional_header(&self){
-        println!("Optional header: \n --------------------- ");
+        println!("OPTIONAL HEADER: \n --------------------- ");
         println!("Address of entry point: {}", self.adres_of_entry_point());
         println!("Image base: {}", self.image_base());
         println!("Section aligment: {}", self.section_alignment());
@@ -195,6 +223,10 @@ impl PeFile{
         for (mask, desc) in self.dll_characteristics(){
             println!("Flag: 0x{:04x} - {}", mask, desc);
         }
+    }
+    pub fn print_section_headers(&self){
+        println!("SECTION HEADERS: \n --------------------- ");
+    
     }
 }
 

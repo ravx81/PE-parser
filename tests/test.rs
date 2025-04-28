@@ -34,6 +34,6 @@ fn test_optional_header(){
 }
 #[test]
 fn test_errors(){
-    let e1 = Error::InvalidMagic(0);
+    let e1 = Error::InvalidMagic(4);
     println!("{e1}");
 }
