@@ -5,6 +5,7 @@ use std::{error, io};
 #[derive(Debug)]
 pub enum Error{
     InvalidMagic(u16),
+    InvalidPeSignature(u32),
     UnsupportedOptionalHeader(u16),
     Io(std::io::Error),
 }
@@ -17,7 +18,9 @@ impl fmt::Display for Error{
             Error::UnsupportedOptionalHeader(value) =>
                 write!(fmt, "Unsupported optional-header magic value: 0x{value:04X}"),
             Error::Io(e) => 
-                write!(fmt, "I/O error: {e}")
+                write!(fmt, "I/O error: {e}"),
+            Error::InvalidPeSignature(pe_signature) =>
+                write!(fmt, "Invalid pe signature: 0x{pe_signature:08x}"),
             }
         }
     }

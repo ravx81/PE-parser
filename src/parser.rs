@@ -94,7 +94,13 @@ impl PeFile{
             other => return Err(Error::UnsupportedOptionalHeader(other)),
         };
 
-    
+        let pe_signature_bytes: [u8; 4] = buffer[e_lfanew..e_lfanew+4].try_into().unwrap();
+
+        let pe_signature = u32::from_le_bytes(pe_signature_bytes);
+
+        if pe_signature != PE_SIGNATURE{
+            return Err(Error::InvalidPeSignature(pe_signature));
+        }
 
         Ok(Self { buffer, e_lfanew, file_header, optional_header})
     //from fileheader
@@ -199,7 +205,9 @@ impl PeFile{
         }
         sections
     }
-
+    pub fn read_sections(&self, section_name: &str) -> Vec<u8>{
+        
+    }
     pub fn print_file_header(&self){
         println!("FILE HEADER: \n --------------------- ");
         println!("Machine: {}", self.architecture());
