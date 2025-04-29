@@ -9,6 +9,7 @@ pub enum Error{
     UnsupportedOptionalHeader(u16),
     Io(std::io::Error),
     InvalidImportTableOffset,
+    InvalidDllName,
 }
 
 impl fmt::Display for Error{
@@ -24,6 +25,8 @@ impl fmt::Display for Error{
                 write!(fmt, "Invalid pe signature: 0x{pe_signature:08x}"),
             Error::InvalidImportTableOffset =>
                 write!(fmt, "Invalid import table offset"),
+            Error::InvalidDllName =>
+                write!(fmt, "Invalid dll name"),
 
             }
         }
