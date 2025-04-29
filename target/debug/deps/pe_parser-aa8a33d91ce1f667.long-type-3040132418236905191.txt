@@ -1,0 +1,2 @@
+ops::range::Range<result::Result<usize, fn() -> errors::Error {errors::Error::InvalidImportTableOffset}>>
+std::ops::Range<std::result::Result<usize, fn() -> errors::Error {errors::Error::InvalidImportTableOffset}>>

@@ -2,7 +2,7 @@ use core::error;
 use std::{io, ptr, result, vec};
 use std::{fmt::format, fs};
 use std::convert::TryInto;
-use crate::headers::{DosHeader, FileHeader, NtHeaders64, OptionalHeader32, OptionalHeader64, SectionHeader, PE_SIGNATURE};
+use crate::headers::{DataDirectory, DosHeader, FileHeader, NtHeaders64, OptionalHeader32, OptionalHeader64, SectionHeader, PE_SIGNATURE};
 use chrono::prelude::DateTime;
 use chrono::Utc;
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
@@ -15,10 +15,10 @@ pub enum OptionalHeader {
 
 
 pub struct PeFile {
-    buffer: Vec<u8>, //whole memory in file
-    e_lfanew: usize,
-    file_header: FileHeader,
-    optional_header: Box<dyn OptionalHeaderView>,
+    pub buffer: Vec<u8>, //whole memory in file
+    pub e_lfanew: usize,
+    pub file_header: FileHeader,
+    pub optional_header: Box<dyn OptionalHeaderView>,
 }
 
 pub trait OptionalHeaderView {
@@ -30,6 +30,8 @@ pub trait OptionalHeaderView {
     fn file_alignment(&self)        -> u32;
     fn subsystem(&self)             -> u16;   // możesz zwrócić własny enum Subsystem
     fn dll_characteristics(&self)   -> u16;
+    fn data_directory(&self)        -> [DataDirectory; 16];
+
 }
 
 impl OptionalHeaderView for OptionalHeader32 {
@@ -43,6 +45,8 @@ impl OptionalHeaderView for OptionalHeader32 {
 
     fn subsystem(&self)             -> u16 { self.subsystem }
     fn dll_characteristics(&self)   -> u16 { self.dll_characteristics }
+    fn data_directory(&self)        -> [DataDirectory; 16] { self.data_directory}
+
 }
 impl OptionalHeaderView for OptionalHeader64 {
     fn address_of_entry_point(&self) -> u32 { self.address_of_entry_point }
@@ -55,6 +59,7 @@ impl OptionalHeaderView for OptionalHeader64 {
 
     fn subsystem(&self)             -> u16 { self.subsystem }
     fn dll_characteristics(&self)   -> u16 { self.dll_characteristics }
+    fn data_directory(&self)        -> [DataDirectory; 16] { self.data_directory}
 }
 
 impl PeFile{

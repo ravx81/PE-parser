@@ -8,6 +8,7 @@ pub enum Error{
     InvalidPeSignature(u32),
     UnsupportedOptionalHeader(u16),
     Io(std::io::Error),
+    InvalidImportTableOffset,
 }
 
 impl fmt::Display for Error{
@@ -21,6 +22,9 @@ impl fmt::Display for Error{
                 write!(fmt, "I/O error: {e}"),
             Error::InvalidPeSignature(pe_signature) =>
                 write!(fmt, "Invalid pe signature: 0x{pe_signature:08x}"),
+            Error::InvalidImportTableOffset =>
+                write!(fmt, "Invalid import table offset"),
+
             }
         }
     }
