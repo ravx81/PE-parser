@@ -29,11 +29,20 @@ pub fn parse_import_table(pe: &PeFile) -> Result<()>{
         let forwarder_chain = u32::from_le_bytes(block[8..12].try_into().unwrap());
         let name = u32::from_le_bytes(block[12..16].try_into().unwrap());
         let first_thunk = u32::from_le_bytes(block[16..20].try_into().unwrap());
-        
+        //last descripctor record has all fields == 0, which marks the end of the import table
+        if original_first_thunk == 0 && time_date_stamp == 0 && forwarder_chain == 0 && name == 0 && first_thunk == 0 {break;}
+
         let dll_name = read_dll_names(&pe, rva)?;
+
+        println!("DLL: {}", dll_name);
+        println!("  Original first thunk: 0x{:08x}", original_first_thunk);
+        println!("  Time date stamp:      {}", time_date_stamp);
+        println!("  Forwarder chain:     {}", forwarder_chain);
+        println!("  First thunk:         0x{:08x}", first_thunk);
+
+        position += 1;
         
-    }
-    
+    }   
     Ok(())
 }
 pub fn read_dll_names(pe: &PeFile, rva: u32) -> Result<String>{

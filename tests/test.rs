@@ -1,4 +1,5 @@
 use pe_parser::parser::PeFile;
+use pe_parser::import_table::parse_import_table;
 use pe_parser::Error;
 
 #[test]
@@ -42,4 +43,10 @@ fn test_section_headers(){
     let path: &str = "tests/test.exe";
     let pe = PeFile::parse(path).expect("Failed");
     pe.print_section_headers();
+}
+#[test]
+fn test_import_table(){
+    let path: &str = "tests/test.exe";
+    let pe = PeFile::parse(path).expect("Failed");
+    parse_import_table(&pe);
 }
