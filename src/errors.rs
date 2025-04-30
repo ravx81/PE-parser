@@ -9,6 +9,7 @@ pub enum Error{
     UnsupportedOptionalHeader(u16),
     Io(std::io::Error),
     InvalidImportTableOffset,
+    InvalidExportTableOffset,
     InvalidDllName,
 }
 
@@ -27,6 +28,8 @@ impl fmt::Display for Error{
                 write!(fmt, "Invalid import table offset"),
             Error::InvalidDllName =>
                 write!(fmt, "Invalid dll name"),
+            Error::InvalidExportTableOffset =>
+                write!(fmt, "Invalid export table offset"),
 
             }
         }

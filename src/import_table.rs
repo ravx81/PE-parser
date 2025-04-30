@@ -3,6 +3,8 @@ use chrono::offset;
 use crate::parser::PeFile;
 use crate::headers::{DosHeader, FileHeader, NtHeaders64, OptionalHeader32, OptionalHeader64, SectionHeader, PE_SIGNATURE};
 use crate::errors::{Error, Result};
+use crate::utils::rva_to_offset;
+
 
 // to get into import_table, we have first get rva, next find the right section and calculate offset.
 pub fn parse_import_table(pe: &PeFile) -> Result<()>{
@@ -11,7 +13,7 @@ pub fn parse_import_table(pe: &PeFile) -> Result<()>{
     let rva = import_data_directory.virtual_address;
     let size = import_data_directory.size as usize;
 
-    let import_table_offset = pe.rva_to_offset(rva).ok_or(Error::InvalidImportTableOffset)?;
+    let import_table_offset = rva_to_offset(&pe, rva).ok_or(Error::InvalidImportTableOffset)?;
 
 
     let slice_bytes = &pe.buffer[import_table_offset..import_table_offset + size];
@@ -19,6 +21,7 @@ pub fn parse_import_table(pe: &PeFile) -> Result<()>{
     let descriptor_size = 5 * 4; // 5 fields every field has 4 bytes
     let mut position = 0; //we will use loop to go to end of slice_bytes
 
+    
     while position + descriptor_size <= slice_bytes.len(){
         let start = position * descriptor_size;
         let end = start + descriptor_size;
@@ -47,7 +50,7 @@ pub fn parse_import_table(pe: &PeFile) -> Result<()>{
 }
 pub fn read_dll_names(pe: &PeFile, rva: u32) -> Result<String>{
     //change RVA to offset in file
-    let offset = pe.rva_to_offset(rva).ok_or(Error::InvalidImportTableOffset)?;
+    let offset = rva_to_offset(&pe, rva).ok_or(Error::InvalidImportTableOffset)?;
     //we take from beginning to end, because we don't know where ('0x00') is.
     let buffer = &pe.buffer[offset..];
     //search for first ('0x00') that means it is end of dll_name
