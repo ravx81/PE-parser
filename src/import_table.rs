@@ -3,17 +3,25 @@ use chrono::offset;
 use crate::parser::PeFile;
 use crate::headers::{DosHeader, FileHeader, NtHeaders64, OptionalHeader32, OptionalHeader64, SectionHeader, PE_SIGNATURE};
 use crate::errors::{Error, Result};
-use crate::utils::rva_to_offset;
+use crate::utils::{read_dll_names, rva_to_offset};
 
 
+#[derive(Debug)]
+pub struct ImportEntry {
+    pub original_first_thunk: u32,
+    pub time_date_stamp: u32,
+    pub forwarder_chain: u32,
+    pub name: u32,
+    pub first_thunk: u32,
+}
 // to get into import_table, we have first get rva, next find the right section and calculate offset.
-pub fn parse_import_table(pe: &PeFile) -> Result<()>{
+pub fn parse_import_table(pe: &PeFile) -> Result<Vec<ImportEntry>>{
 
     let import_data_directory = pe.optional_header.data_directory()[1];
     let rva = import_data_directory.virtual_address;
     let size = import_data_directory.size as usize;
 
-    let import_table_offset = rva_to_offset(&pe, rva).ok_or(Error::InvalidImportTableOffset)?;
+    let import_table_offset = rva_to_offset(&pe, rva).ok_or(Error::InvalidTableOffset)?;
 
 
     let slice_bytes = &pe.buffer[import_table_offset..import_table_offset + size];
@@ -21,7 +29,7 @@ pub fn parse_import_table(pe: &PeFile) -> Result<()>{
     let descriptor_size = 5 * 4; // 5 fields every field has 4 bytes
     let mut position = 0; //we will use loop to go to end of slice_bytes
 
-    
+    let mut import_table_structure: Vec<ImportEntry> = Vec::new();
     while position + descriptor_size <= slice_bytes.len(){
         let start = position * descriptor_size;
         let end = start + descriptor_size;
@@ -35,28 +43,21 @@ pub fn parse_import_table(pe: &PeFile) -> Result<()>{
         //last descripctor record has all fields == 0, which marks the end of the import table
         if original_first_thunk == 0 && time_date_stamp == 0 && forwarder_chain == 0 && name == 0 && first_thunk == 0 {break;}
 
-        let dll_name = read_dll_names(&pe, rva)?;
+        //let dll_name = read_dll_names(&pe, name)?;
 
-        println!("DLL: {}", dll_name);
-        println!("  Original first thunk: 0x{:08x}", original_first_thunk);
-        println!("  Time date stamp:      {}", time_date_stamp);
-        println!("  Forwarder chain:     {}", forwarder_chain);
-        println!("  First thunk:         0x{:08x}", first_thunk);
+        let import_entry = ImportEntry {
+            original_first_thunk,
+            time_date_stamp,
+            forwarder_chain,
+            name,
+            first_thunk,
+        };
+        import_table_structure.push(import_entry);
+
 
         position += 1;
-        
+    
     }   
-    Ok(())
+    Ok(import_table_structure)
 }
-pub fn read_dll_names(pe: &PeFile, rva: u32) -> Result<String>{
-    //change RVA to offset in file
-    let offset = rva_to_offset(&pe, rva).ok_or(Error::InvalidImportTableOffset)?;
-    //we take from beginning to end, because we don't know where ('0x00') is.
-    let buffer = &pe.buffer[offset..];
-    //search for first ('0x00') that means it is end of dll_name
-    let buffer_len = buffer.iter().position(|&byte| byte == 0).unwrap_or(buffer.len());
-    // just convert to string, from bytes
-    let dll_name = std::str::from_utf8(&buffer[..buffer_len]).map_err(|_| Error::InvalidDllName)?.to_string();
 
-    Ok(dll_name)
-}

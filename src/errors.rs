@@ -8,8 +8,7 @@ pub enum Error{
     InvalidPeSignature(u32),
     UnsupportedOptionalHeader(u16),
     Io(std::io::Error),
-    InvalidImportTableOffset,
-    InvalidExportTableOffset,
+    InvalidTableOffset,
     InvalidDllName,
 }
 
@@ -24,13 +23,10 @@ impl fmt::Display for Error{
                 write!(fmt, "I/O error: {e}"),
             Error::InvalidPeSignature(pe_signature) =>
                 write!(fmt, "Invalid pe signature: 0x{pe_signature:08x}"),
-            Error::InvalidImportTableOffset =>
-                write!(fmt, "Invalid import table offset"),
+            Error::InvalidTableOffset =>
+                write!(fmt, "Invalid table offset"),
             Error::InvalidDllName =>
                 write!(fmt, "Invalid dll name"),
-            Error::InvalidExportTableOffset =>
-                write!(fmt, "Invalid export table offset"),
-
             }
         }
     }

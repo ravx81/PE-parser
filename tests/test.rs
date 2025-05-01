@@ -1,6 +1,8 @@
+use pe_parser::export_table::parse_export_table;
 use pe_parser::parser::PeFile;
 use pe_parser::import_table::parse_import_table;
 use pe_parser::Error;
+use pe_parser::headers::{FileHeader, OptionalHeader32, OptionalHeader64, SectionHeader};
 
 #[test]
 fn detect_x64(){
@@ -25,13 +27,11 @@ fn detect_arm64(){
 fn test_file_header(){
     let path: &str = "tests/test.exe";
     let pe = PeFile::parse(path).expect("Failed");
-    pe.print_file_header();
 } 
 #[test]
 fn test_optional_header(){
     let path: &str = "tests/test.exe";
     let pe = PeFile::parse(path).expect("Failed");
-    pe.print_optional_header();
 }
 #[test]
 fn test_errors(){
@@ -42,11 +42,16 @@ fn test_errors(){
 fn test_section_headers(){
     let path: &str = "tests/test.exe";
     let pe = PeFile::parse(path).expect("Failed");
-    pe.print_section_headers();
 }
 #[test]
 fn test_import_table(){
     let path: &str = "tests/test.exe";
     let pe = PeFile::parse(path).expect("Failed");
     parse_import_table(&pe);
+}
+#[test]
+fn test_export_table(){
+    let path: &str = "tests/test.exe";
+    let pe = PeFile::parse(path).expect("Failed");
+    parse_export_table(&pe);
 }

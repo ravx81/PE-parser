@@ -31,7 +31,7 @@ pub struct DosHeader {
     pub e_oemid:   u16,
     pub e_oeminfo: u16,
     pub e_res2:    [u16; 10],
-    pub e_lfanew:  i32,
+    pub e_lfanew:  u32,
 }
 
 #[repr(C)]
