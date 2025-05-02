@@ -125,7 +125,7 @@ pub enum OptionalHeader {
     Header64(OptionalHeader64),
 }
 
-/// Macro to generate u64-returning accessor methods for common fields
+/// generate both of them to u64
 macro_rules! impl_optional_header {
     ($enum:ident { $($field:ident),* $(,)? }) => {
         impl $enum {
@@ -141,7 +141,7 @@ macro_rules! impl_optional_header {
     };
 }
 
-// Generate accessors for fields present in both variants
+// fields present in both variants (32,64)
 impl_optional_header!(OptionalHeader {
     magic,
     major_linker_version,
