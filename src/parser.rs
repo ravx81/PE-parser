@@ -16,87 +16,85 @@ pub struct PeFile {
     pub buffer: Vec<u8>, //whole memory in file
     pub e_lfanew: usize,
     pub file_header: FileHeader,
-    pub optional_header: Box<dyn OptionalHeaderView>,
+    pub optional_header: OptionalHeader,
 }
 
-pub trait OptionalHeaderView {
-    fn address_of_entry_point(&self) -> u32;
-    fn image_base(&self)            -> u64;
-    fn size_of_image(&self)         -> u32;
-    fn size_of_headers(&self)       -> u32;
-    fn section_alignment(&self)     -> u32;
-    fn file_alignment(&self)        -> u32;
-    fn subsystem(&self)             -> u16;   // możesz zwrócić własny enum Subsystem
-    fn dll_characteristics(&self)   -> u16;
-    fn data_directory(&self)        -> [DataDirectory; 16];
+impl OptionalHeader {
+    /// base_of_data exists only in PE32
+    #[inline]
+    pub fn base_of_data(&self) -> u64 {
+        match self {
+            OptionalHeader::Header32(h) => h.base_of_data as u64,
+            OptionalHeader::Header64(_) => 0,
+        }
+    }
 
+    /// Data directories (shared between variants)
+    #[inline]
+    pub fn data_directory(&self) -> &[DataDirectory; 16] {
+        match self {
+            OptionalHeader::Header32(h) => &h.data_directory,
+            OptionalHeader::Header64(h) => &h.data_directory,
+        }
+    }
 }
-
-impl OptionalHeaderView for OptionalHeader32 {
-    fn address_of_entry_point(&self) -> u32 { self.address_of_entry_point }
-    fn image_base(&self)            -> u64 { self.image_base as u64 }
-
-    fn size_of_image(&self)         -> u32 { self.size_of_image }
-    fn size_of_headers(&self)       -> u32 { self.size_of_headers }
-    fn section_alignment(&self)     -> u32 { self.section_alignment }
-    fn file_alignment(&self)        -> u32 { self.file_alignment }
-
-    fn subsystem(&self)             -> u16 { self.subsystem }
-    fn dll_characteristics(&self)   -> u16 { self.dll_characteristics }
-    fn data_directory(&self)        -> [DataDirectory; 16] { self.data_directory}
-
-}
-impl OptionalHeaderView for OptionalHeader64 {
-    fn address_of_entry_point(&self) -> u32 { self.address_of_entry_point }
-    fn image_base(&self)            -> u64 { self.image_base }
-
-    fn size_of_image(&self)         -> u32 { self.size_of_image }
-    fn size_of_headers(&self)       -> u32 { self.size_of_headers }
-    fn section_alignment(&self)     -> u32 { self.section_alignment }
-    fn file_alignment(&self)        -> u32 { self.file_alignment }
-
-    fn subsystem(&self)             -> u16 { self.subsystem }
-    fn dll_characteristics(&self)   -> u16 { self.dll_characteristics }
-    fn data_directory(&self)        -> [DataDirectory; 16] { self.data_directory}
-}
-
 impl PeFile{
     pub fn parse(path: &str) -> Result<Self> {
         let buffer = fs::read(path)?;
-        // checked if "MZ" is in file. 
+        Self::validate_dos(&buffer)?;
+        let e_lfanew = Self::dos_e_lfanew(&buffer)?;
+
+        let file_header   = Self::parse_file_header(&buffer, e_lfanew)?;
+        let optional_header  = Self::parse_optional_header(&buffer, e_lfanew)?;
+        Self::validate_pe_signature(&buffer, e_lfanew)?;
+
+        Ok(Self {
+            buffer,
+            e_lfanew,
+            file_header,
+            optional_header: optional_header,
+        })
+    }
+    fn validate_dos(buffer: &[u8]) -> Result<()> {
         let dos_magic = u16::from_le_bytes(buffer[0..2].try_into().unwrap());
         if dos_magic != 0x5A4D {
             return Err(Error::InvalidMagic(dos_magic));
         }
-
-        // DOS header at 0x3C holds e_lfanew (4 bytes)
+        Ok(())
+    }
+    fn dos_e_lfanew(buffer: &[u8]) -> Result<usize> {
         let e_lfanew = {
             let bytes: [u8; 4] = buffer[0x3C..0x40].try_into().unwrap();
             u32::from_le_bytes(bytes) as usize
         };
-        // file_header
+        Ok(e_lfanew)
+    }
+    fn parse_file_header(buffer: &[u8], e_lfanew: usize) -> Result<FileHeader> {
         let fh_offset = e_lfanew + 4;
         let file_header: FileHeader = unsafe {
             //we read here struct from headers.rs (20 bytes)
             ptr::read_unaligned(buffer.as_ptr().add(fh_offset) as *const FileHeader)
         };
-
-        //optional header
+        Ok(file_header)
+    }
+    fn parse_optional_header(buffer: &[u8], e_lfanew: usize) -> Result<OptionalHeader> {
+        let fh_offset = e_lfanew + 4;
         let oh_offset: usize = fh_offset + std::mem::size_of::<FileHeader>();
-
-
-        let magic = u16::from_le_bytes(buffer[oh_offset..oh_offset+2].try_into().unwrap());
         
-        let optional_header: Box<dyn OptionalHeaderView> = match magic {
-            0x10B => Box::new(unsafe {
+        let magic = u16::from_le_bytes(buffer[oh_offset..oh_offset+2].try_into().unwrap());
+
+        let optional_header: OptionalHeader = match magic {
+            0x10B => OptionalHeader::Header32(unsafe {
                 ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader32)
             }),
-            0x20B => Box::new(unsafe {
+            0x20B => OptionalHeader::Header64(unsafe {
                 ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader64)
             }),
             other => return Err(Error::UnsupportedOptionalHeader(other)),
         };
-
+        Ok(optional_header)
+    }
+    fn validate_pe_signature(buffer: &[u8], e_lfanew: usize) -> Result<()> {
         let pe_signature_bytes: [u8; 4] = buffer[e_lfanew..e_lfanew+4].try_into().unwrap();
 
         let pe_signature = u32::from_le_bytes(pe_signature_bytes);
@@ -104,41 +102,8 @@ impl PeFile{
         if pe_signature != PE_SIGNATURE{
             return Err(Error::InvalidPeSignature(pe_signature));
         }
-
-        Ok(Self { buffer, e_lfanew, file_header, optional_header})
-
-    //fileaheader getters
+        Ok(())
     }
-    pub fn number_of_sections(&self) -> u16 {
-        self.file_header.number_of_sections
-    }
-    
-    pub fn characteristics(&self) -> u16 {
-        self.file_header.characteristics
-    }
-
-    //from optionalheader
-
-    pub fn address_of_entry_point(&self) -> u32 {
-        self.optional_header.address_of_entry_point()
-    }
-    pub fn image_base(&self) -> u64{
-        self.optional_header.image_base()
-    }
-    pub fn size_of_image(&self) -> u32{
-        self.optional_header.size_of_image()
-    }
-    pub fn size_of_headers(&self) -> u32 { 
-        self.optional_header.size_of_headers()
-    }
-    pub fn section_alignment(&self) -> u32 { 
-        self.optional_header.section_alignment()
-    }
-
-    pub fn file_alignment(&self) -> u32 { 
-        self.optional_header.file_alignment()
-    }
-
 
     pub fn parse_section_headers(&self) -> Vec<SectionHeader>{
         //section_offset = e_lfanew + PE_signature... 
