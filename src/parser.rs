@@ -1,7 +1,7 @@
 use std::{ptr, fs};
 use crate::headers::{DataDirectory, DosHeader, FileHeader, OptionalHeader, OptionalHeader32, OptionalHeader64, SectionHeader};
 use crate::errors::{Error, Result};
-
+use crate::view::Parsed;
 
 pub struct PeFile {
     pub buffer: Vec<u8>, //whole memory in file
@@ -22,6 +22,13 @@ impl PeFile {
         let sections = SectionHeader::parse_section_headers(&buffer, &file_header, e_lfanew)?;
         Ok(PeFile { buffer: buffer, e_lfanew, file_header, optional_header, sections })
     }
+    pub fn raw(&self) -> &Self {
+        self
+    }
+    pub fn parsed(&self) -> Parsed{
+        Parsed::new(self)
+    }
+
 }
 
 

@@ -8,6 +8,7 @@ pub mod dos_header;
 pub mod file_header;
 pub mod section_header;
 pub mod optional_header;
-//pub mod view;
+
+pub mod view;
 
 pub use errors::{Error, Result};
