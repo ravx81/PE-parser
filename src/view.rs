@@ -2,6 +2,8 @@ use crate::parser::PeFile;
 use chrono::prelude::DateTime;
 use chrono::Utc;
 use std::time::{UNIX_EPOCH, Duration};
+use std::path::{self, Path};
+use std::collections::HashMap;
 
 pub struct Parsed<'a> {
     raw: &'a PeFile,
@@ -78,7 +80,7 @@ impl<'a> Parsed<'a> {
         format!("Linker v{}.{}", oh.major_linker_version(), oh.minor_linker_version())
     }
 
-    pub fn os_version(&self) -> String {
+    pub fn os_version(&self) -> String{
         let oh = &self.raw.optional_header;
         format!("OS v{}.{}", oh.major_os_version(), oh.minor_os_version())
     }
@@ -92,5 +94,55 @@ impl<'a> Parsed<'a> {
         let oh = &self.raw.optional_header;
         format!("Subsystem v{}.{}", oh.major_subsystem_version(), oh.minor_subsystem_version())
     }
+    pub fn characteristics(&self) -> Vec<(u16, &'static str)> {
+        let flag = self.raw.file_header.characteristics;
+        let mut results = Vec::new();
+        println!("0x{:X}", flag);
+        let file_header_flags = [
+            (0x0001, "RELOCS_STRIPPED"),
+            (0x0002, "EXECUTABLE_IMAGE"),
+            (0x0004, "LINE_NUMS_STRIPPED (deprecated)"),
+            (0x0008, "LOCAL_SYMS_STRIPPED (deprecated)"),
+            (0x0010, "AGGRESSIVE_WS_TRIM (obsolete)"),
+            (0x0020, "LARGE_ADDRESS_AWARE"),
+            (0x0040, "RESERVED"),
+            (0x0080, "BYTES_REVERSED_LO (deprecated)"),
+            (0x0100, "32BIT_MACHINE"),
+            (0x0200, "DEBUG_STRIPPED"),
+            (0x0400, "REMOVABLE_RUN_FROM_SWAP"),
+            (0x0800, "NET_RUN_FROM_SWAP"),
+            (0x1000, "SYSTEM"),
+            (0x2000, "DLL"),
+            (0x4000, "UP_SYSTEM_ONLY"),
+            (0x8000, "BYTES_REVERSED_HI (deprecated)"),
+        ];
+        for (mask, description) in &file_header_flags{
+            if flag & mask != 0{
+                results.push((*mask, *description));
+            }
+        }
+        results
+    }
+    pub fn detect_type(&self, path: &Path){
+        let pe_extensions= HashMap::from([
+                ("exe", "Executable (EXE)"),
+                ("dll", "Dynamic-Link Library (DLL)"),
+                ("sys", "System Driver (SYS)"),
+                ("ocx", "ActiveX Control (OCX)"),
+                ("scr", "Screensaver (SCR)"),
+                ("cpl", "Control Panel Applet (CPL)"),
+                ("efi", "UEFI Application (EFI)"),
+            ]);
+        if let Some(extension) = path.extension().and_then(|e| e.to_str()){
+            if let Some(description) = pe_extensions.get(extension){
+                println!("File type {}", description);
+            }else{
+                println!("It's not PE file. ");
+            }
+        }else{
+            println!("No extension");
+        }
+    }
 }
+
 

@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{ptr, fs};
 use crate::headers::{DataDirectory, DosHeader, FileHeader, OptionalHeader, OptionalHeader32, OptionalHeader64, SectionHeader};
 use crate::errors::{Error, Result};
@@ -13,7 +14,7 @@ pub struct PeFile {
 
 
 impl PeFile {
-    pub fn parse(path: &str) -> Result<Self> {
+    pub fn parse(path: &Path) -> Result<Self> {
         let buffer = std::fs::read(path)?;
         let dos_header = DosHeader::parse(&buffer)?;
         let e_lfanew = dos_header.e_lfanew();
