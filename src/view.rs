@@ -1,3 +1,4 @@
+use crate::headers::SectionHeader;
 use crate::parser::PeFile;
 use chrono::prelude::DateTime;
 use chrono::Utc;
@@ -7,6 +8,19 @@ use std::collections::HashMap;
 
 pub struct Parsed<'a> {
     raw: &'a PeFile,
+}
+pub struct ParsedSection {
+    pub name: String,
+    pub virtual_size: String,
+    pub virtual_address: String,
+    pub size_of_raw_data: String,
+    pub pointer_to_raw_data: String,
+    pub pointer_to_relocations: String,
+    pub pointer_to_linenumbers: String,
+    pub number_of_relocations: u16,
+    pub number_of_linenumbers: u16,
+    pub characteristics: String,
+    pub flags: Vec<&'static str>,
 }
 
 impl<'a> Parsed<'a> {
@@ -142,6 +156,81 @@ impl<'a> Parsed<'a> {
         }else{
             println!("No extension");
         }
+    }
+    fn parse_section_flags(&self, flags: &u32) -> Vec<&'static str> {
+        let mut parsed_flags: Vec<&'static str> = Vec::new();
+        //from offical microsoft documentation, only names are changed (to be shorter). 
+        let flag_defs = [
+        // standard content types
+        (0x00000008, "NO_PAD"),
+        (0x00000020, "CODE"),
+        (0x00000040, "INITIALIZED_DATA"),
+        (0x00000080, "UNINITIALIZED_DATA"),
+        // object file only
+        (0x00000100, "LNK_OTHER"),
+        (0x00000200, "LNK_INFO"),
+        (0x00000800, "LNK_REMOVE"),
+        (0x00001000, "LNK_COMDAT"),
+        (0x00004000, "NO_DEFER_SPEC_EXC"),
+        (0x00008000, "GPREL"),
+        (0x01000000, "LNK_NRELOC_OVFL"),
+        // memory usage
+        (0x02000000, "DISCARDABLE"),
+        (0x04000000, "NOT_CACHED"),
+        (0x08000000, "NOT_PAGED"),
+        (0x10000000, "SHARED"),
+        (0x20000000, "EXECUTE"),
+        (0x40000000, "READ"),
+        (0x80000000, "WRITE"),
+        // Alignment
+        (0x00100000, "ALIGN_1BYTES"),
+        (0x00200000, "ALIGN_2BYTES"),
+        (0x00300000, "ALIGN_4BYTES"),
+        (0x00400000, "ALIGN_8BYTES"),
+        (0x00500000, "ALIGN_16BYTES"),
+        (0x00600000, "ALIGN_32BYTES"),
+        (0x00700000, "ALIGN_64BYTES"),
+        (0x00800000, "ALIGN_128BYTES"),
+        (0x00900000, "ALIGN_256BYTES"),
+        (0x00A00000, "ALIGN_512BYTES"),
+        (0x00B00000, "ALIGN_1024BYTES"),
+        (0x00C00000, "ALIGN_2048BYTES"),
+        (0x00D00000, "ALIGN_4096BYTES"),
+        (0x00E00000, "ALIGN_8192BYTES"),  
+    ];
+
+    for (mask, description) in &flag_defs{
+        if flags & mask != 0{
+            parsed_flags.push(*description);
+        }
+    }
+    parsed_flags
+
+    }
+    pub fn sections(&self) -> Vec<ParsedSection> {
+        let mut parsed_sections = Vec::new();
+        let sections = &self.raw.sections;
+        for section in sections{
+            let name = std::str::from_utf8(&section.name).unwrap_or("Can't read section name").trim_end_matches('\0').to_string();
+
+
+            let flags = self.parse_section_flags(&section.characteristics);
+
+            parsed_sections.push(ParsedSection{
+                name, 
+                virtual_size: format!("0x{:08X}", section.virtual_size),
+                virtual_address: format!("0x{:08X}", section.virtual_address),
+                size_of_raw_data: format!("0x{:08X}", section.size_of_raw_data),
+                pointer_to_raw_data: format!("0x{:08X}", section.pointer_to_raw_data),
+                pointer_to_relocations: format!("0x{:08X}", section.pointer_to_relocations),
+                pointer_to_linenumbers: format!("0x{:08X}", section.pointer_to_linenumbers),
+                number_of_relocations: section.number_of_relocations,
+                number_of_linenumbers: section.number_of_linenumbers,
+                characteristics: format!("0x{:08X}", section.characteristics),
+                flags,
+            });
+        }
+        parsed_sections
     }
 }
 
