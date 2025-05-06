@@ -1,14 +1,22 @@
+use crate::export_table::parse_export_table;
 use crate::headers::SectionHeader;
+use crate::export_table::ExportEntry;
+use crate::import_table::ImportEntry;
+use crate::import_table::parse_import_table;
 use crate::parser::PeFile;
 use chrono::prelude::DateTime;
 use chrono::Utc;
 use std::time::{UNIX_EPOCH, Duration};
 use std::path::{self, Path};
 use std::collections::HashMap;
+use serde::Serialize;
 
+#[derive(Serialize)]
 pub struct Parsed<'a> {
     raw: &'a PeFile,
 }
+
+#[derive(Serialize)]
 pub struct ParsedSection {
     pub name: String,
     pub virtual_size: String,
@@ -23,9 +31,53 @@ pub struct ParsedSection {
     pub flags: Vec<&'static str>,
 }
 
+#[derive(Serialize)]
+pub struct ParsedPretty {
+    pub architecture: String,
+    pub entry_point: String,
+    pub image_base: String,
+    pub timestamp: String,
+    pub subsystem: String,
+    pub dll_characteristics: Vec<String>,
+    pub sections: Vec<ParsedSection>,
+    pub import_table: Option<Vec<ImportEntry>>,
+    pub export_table: Option<Vec<ExportEntry>>,
+}
+#[derive(Serialize)]
+pub struct ParsedSummary {
+    pub architecture: String,
+    pub entry_point: String,
+    pub image_base: String,
+    pub timestamp: String,
+    pub subsystem: String,
+}
+
 impl<'a> Parsed<'a> {
     pub fn new(raw: &'a PeFile) -> Self {
         Parsed {raw}
+    }
+
+    pub fn pretty_json(&self) -> ParsedPretty {
+        ParsedPretty {
+            architecture: self.architecture().to_string(),
+            entry_point:   self.entry_point(),
+            image_base:    self.image_base(),
+            timestamp:     self.timestamp(),
+            subsystem:     self.subsystem().to_string(),
+            dll_characteristics: self.dll_characteristics().iter().map(|(_, s)| s.to_string()).collect(),
+            sections:     self.sections(),
+            import_table: parse_import_table(self.raw).ok(),
+            export_table: parse_export_table(self.raw).ok(),
+        }
+    }
+    pub fn summary_json(&self) -> ParsedSummary {
+        ParsedSummary {
+            architecture: self.architecture().to_string(),
+            entry_point:  self.entry_point(),
+            image_base:   self.image_base(),
+            timestamp:    self.timestamp(),
+            subsystem:    self.subsystem().to_string(),
+        }
     }
 
     pub fn entry_point(&self) -> String{

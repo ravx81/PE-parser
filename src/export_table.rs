@@ -1,9 +1,11 @@
 use core::slice;
 
+use serde::Serialize;
+
 use crate::{errors::{Error, Result}, parser::PeFile};
 use crate::utils::{read_dll_names, rva_to_offset};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ExportEntry {
     pub characteristics: u32,
     pub time_date_stamp: u32,

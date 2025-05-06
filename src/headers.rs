@@ -1,7 +1,7 @@
-
+use serde::Serialize;
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct DataDirectory {
     pub virtual_address: u32, // RVA do danych (czyli offset w pamięci po załadowaniu)
     pub size: u32,            // rozmiar danych
@@ -35,7 +35,8 @@ pub struct DosHeader {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
+
 pub struct FileHeader {
     pub machine:              u16,
     pub number_of_sections:   u16,
@@ -47,7 +48,7 @@ pub struct FileHeader {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct OptionalHeader32 {
     pub magic:                    u16,
     pub major_linker_version:     u8,
@@ -84,7 +85,8 @@ pub struct OptionalHeader32 {
 
 /// Optional Header for PE32+ (fields as u64 where appropriate)
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
+
 pub struct OptionalHeader64 {
     pub magic:                    u16,
     pub major_linker_version:     u8,
@@ -120,6 +122,7 @@ pub struct OptionalHeader64 {
 }
 
 /// Unified enum for optional header
+#[derive(Serialize)]
 pub enum OptionalHeader {
     Header32(OptionalHeader32),
     Header64(OptionalHeader64),
@@ -191,7 +194,7 @@ pub struct NtHeaders64 {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct SectionHeader {
     pub name: [u8; 8],             
     pub virtual_size: u32,

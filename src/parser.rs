@@ -3,10 +3,16 @@ use std::{ptr, fs};
 use crate::headers::{DataDirectory, DosHeader, FileHeader, OptionalHeader, OptionalHeader32, OptionalHeader64, SectionHeader};
 use crate::errors::{Error, Result};
 use crate::view::Parsed;
+use serde::Serialize;
+use serde_json;
 
+#[derive(Serialize)]
 pub struct PeFile {
+    #[serde(skip_serializing)] // to skip buffer in json.
     pub buffer: Vec<u8>, //whole memory in file
-    pub e_lfanew: usize,
+    #[serde(skip_serializing)]
+    pub e_lfanew: usize, //to skip e_lfanew in json.
+
     pub file_header: FileHeader,
     pub optional_header: OptionalHeader,
     pub sections: Vec<SectionHeader>,
@@ -26,7 +32,7 @@ impl PeFile {
     pub fn raw(&self) -> &Self {
         self
     }
-    pub fn parsed(&self) -> Parsed{
+    pub fn parsed(&self) -> Parsed<'_>{
         Parsed::new(self)
     }
 

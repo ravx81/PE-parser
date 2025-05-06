@@ -1,4 +1,5 @@
 use chrono::offset;
+use serde::Serialize;
 
 use crate::parser::PeFile;
 use crate::headers::{DosHeader, FileHeader, NtHeaders64, OptionalHeader32, OptionalHeader64, SectionHeader, PE_SIGNATURE};
@@ -6,7 +7,7 @@ use crate::errors::{Error, Result};
 use crate::utils::{read_dll_names, rva_to_offset};
 
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ImportEntry {
     pub original_first_thunk: u32,
     pub time_date_stamp: u32,
