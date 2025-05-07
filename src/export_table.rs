@@ -3,7 +3,7 @@ use core::slice;
 use serde::Serialize;
 
 use crate::{errors::{Error, Result}, parser::PeFile};
-use crate::utils::{read_dll_names, rva_to_offset};
+use crate::utils::{rva_to_offset, read_u16, read_u32};
 
 #[derive(Debug, Serialize)]
 pub struct ExportEntry {
@@ -29,31 +29,26 @@ pub fn parse_export_table(pe: &PeFile) -> Result<Vec<ExportEntry>> {
 
     let slice_bytes = &pe.buffer[export_table_offset..export_table_offset + size];
 
-    let descriptor_size: usize = 9 * 4 + 2 * 2;
-
+    const DESCRIPTOR_SIZE: usize = 9 * 4 + 2 * 2; // 9 fields every field has 4 bytes + 2 fields with 2 bytes
     let mut position = 0;
     let mut export_table_structure: Vec<ExportEntry> = Vec::new();
 
-    while position + descriptor_size <= slice_bytes.len(){
-        let start = position * descriptor_size;
-        let end = start + descriptor_size;
-
+    while position * DESCRIPTOR_SIZE < slice_bytes.len() {
+        let start = position * DESCRIPTOR_SIZE;
+        let end = start + DESCRIPTOR_SIZE;
         let block = &slice_bytes[start..end];
 
-        let characteristics = u32::from_le_bytes(block[0..4].try_into().unwrap());
-        let time_date_stamp = u32::from_le_bytes(block[4..8].try_into().unwrap());
-        let major_version = u16::from_le_bytes(block[8..10].try_into().unwrap());
-        let minor_version = u16::from_le_bytes(block[10..12].try_into().unwrap());
-        let name = u32::from_le_bytes(block[12..16].try_into().unwrap());
-        let base = u32::from_le_bytes(block[16..20].try_into().unwrap());
-        let number_of_functions = u32::from_le_bytes(block[20..24].try_into().unwrap());
-        let number_of_names = u32::from_le_bytes(block[24..28].try_into().unwrap());
-        let address_of_functions = u32::from_le_bytes(block[28..32].try_into().unwrap());
-        let address_of_names = u32::from_le_bytes(block[32..36].try_into().unwrap());
-        let address_of_name_ordinals = u32::from_le_bytes(block[36..40].try_into().unwrap());
-
-        //let dll_name = read_dll_names(&pe, name)?;
-
+        let characteristics = read_u32(block, 0)?;
+        let time_date_stamp = read_u32(block, 4)?;
+        let major_version = read_u16(block, 8)?; 
+        let minor_version = read_u16(block, 10)?; 
+        let name = read_u32(block, 12)?;
+        let base = read_u32(block, 16)?;
+        let number_of_functions = read_u32(block, 20)?;
+        let number_of_names = read_u32(block, 24)?;
+        let address_of_functions = read_u32(block, 28)?;
+        let address_of_names = read_u32(block, 32)?;
+        let address_of_name_ordinals = read_u32(block, 36)?;
 
         let export_entry = ExportEntry {
             characteristics,
@@ -70,7 +65,7 @@ pub fn parse_export_table(pe: &PeFile) -> Result<Vec<ExportEntry>> {
         };
         export_table_structure.push(export_entry);
 
-        position +=1
+        position += 1;
     }
     Ok(export_table_structure)
 }

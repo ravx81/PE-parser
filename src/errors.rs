@@ -10,6 +10,8 @@ pub enum Error{
     Io(std::io::Error),
     InvalidTableOffset,
     InvalidDllName,
+    InvalidData,
+    InvalidSize { expected: usize, found: usize},
 }
 
 impl fmt::Display for Error{
@@ -27,6 +29,10 @@ impl fmt::Display for Error{
                 write!(fmt, "Invalid table offset"),
             Error::InvalidDllName =>
                 write!(fmt, "Invalid dll name"),
+            Error::InvalidData=>
+                write!(fmt, "Invalid data in buffer"),
+            Error::InvalidSize { expected, found } =>
+                write!(fmt, "Expected {} bytes, but found {} bytes.", expected, found),
             }
         }
     }

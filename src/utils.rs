@@ -30,3 +30,22 @@ pub fn read_dll_names(pe: &PeFile, rva: u32) -> Result<String>{
 
     Ok(dll_name)
 }
+pub fn read_u32(block: &[u8], offset: usize) -> Result<u32> {
+    let expected_size = 4;
+    block
+        .get(offset..offset + expected_size)
+        .ok_or(Error::InvalidSize { expected: expected_size, found: block.len() })?  // Zainicjalizowanie struktury
+        .try_into()
+        .map(u32::from_le_bytes)
+        .map_err(|_| Error::InvalidData)
+}
+
+pub fn read_u16(block: &[u8], offset: usize) -> Result<u16> {
+    let expected_size = 2;
+    block
+        .get(offset..offset + expected_size)
+        .ok_or(Error::InvalidSize {expected: expected_size, found: block.len() })?
+        .try_into()
+        .map(u16::from_le_bytes)
+        .map_err(|_| Error::InvalidData)
+}
