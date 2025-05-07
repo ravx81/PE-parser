@@ -1,5 +1,4 @@
 use crate::export_table::parse_export_table;
-use crate::headers::SectionHeader;
 use crate::export_table::ExportEntry;
 use crate::import_table::ImportEntry;
 use crate::import_table::parse_import_table;
@@ -7,9 +6,11 @@ use crate::parser::PeFile;
 use chrono::prelude::DateTime;
 use chrono::Utc;
 use std::time::{UNIX_EPOCH, Duration};
-use std::path::{self, Path};
+use std::path::Path;
 use std::collections::HashMap;
 use serde::Serialize;
+use crate::utils::{read_u16, read_u32, format_as_hex};
+use crate::errors::{Error, Result};
 
 #[derive(Serialize)]
 pub struct Parsed<'a> {
@@ -123,8 +124,8 @@ impl<'a> Parsed<'a> {
     
     pub fn architecture(&self) -> &'static str {
         let machine_offset = self.raw.e_lfanew + 4;
-        let raw_arch = u16::from_le_bytes(self.raw.buffer[machine_offset..machine_offset+2 ].try_into().expect("machine field out of bounds"));
     
+        let raw_arch = u16::from_le_bytes(self.raw.buffer[machine_offset..machine_offset+2 ].try_into().expect("machine field out of bounds"));    
         match raw_arch {
             0x014c => "x86 (32‑bit)",
             0x8664 => "x64 (64‑bit)",
@@ -133,6 +134,7 @@ impl<'a> Parsed<'a> {
             _      => "Unknowed architecture",
         }
     }
+    
     
     pub fn timestamp(&self) -> String {
         let d = UNIX_EPOCH + Duration::from_secs(self.raw.file_header.time_date_stamp as u64);
@@ -261,24 +263,25 @@ impl<'a> Parsed<'a> {
     }
     pub fn sections(&self) -> Vec<ParsedSection> {
         let mut parsed_sections = Vec::new();
-        let sections = &self.raw.sections;
-        for section in sections{
-            let name = std::str::from_utf8(&section.name).unwrap_or("Can't read section name").trim_end_matches('\0').to_string();
-
-
+        for section in &self.raw.sections {
+            let name = std::str::from_utf8(&section.name)
+                .unwrap_or("Can't read section name")
+                .trim_end_matches('\0')
+                .to_string();
+    
             let flags = self.parse_section_flags(&section.characteristics);
-
-            parsed_sections.push(ParsedSection{
-                name, 
-                virtual_size: format!("0x{:08X}", section.virtual_size),
-                virtual_address: format!("0x{:08X}", section.virtual_address),
-                size_of_raw_data: format!("0x{:08X}", section.size_of_raw_data),
-                pointer_to_raw_data: format!("0x{:08X}", section.pointer_to_raw_data),
-                pointer_to_relocations: format!("0x{:08X}", section.pointer_to_relocations),
-                pointer_to_linenumbers: format!("0x{:08X}", section.pointer_to_linenumbers),
+    
+            parsed_sections.push(ParsedSection {
+                name,
+                virtual_size: format_as_hex(section.virtual_size),
+                virtual_address: format_as_hex(section.virtual_address),
+                size_of_raw_data: format_as_hex(section.size_of_raw_data),
+                pointer_to_raw_data: format_as_hex(section.pointer_to_raw_data),
+                pointer_to_relocations: format_as_hex(section.pointer_to_relocations),
+                pointer_to_linenumbers: format_as_hex(section.pointer_to_linenumbers),
                 number_of_relocations: section.number_of_relocations,
                 number_of_linenumbers: section.number_of_linenumbers,
-                characteristics: format!("0x{:08X}", section.characteristics),
+                characteristics: format_as_hex(section.characteristics),
                 flags,
             });
         }

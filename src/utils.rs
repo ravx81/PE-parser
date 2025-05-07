@@ -1,6 +1,5 @@
 
 use crate::parser::PeFile;
-use crate::headers::{FileHeader, SectionHeader};
 use crate::errors::{Error, Result};
 
 
@@ -48,4 +47,7 @@ pub fn read_u16(block: &[u8], offset: usize) -> Result<u16> {
         .try_into()
         .map(u16::from_le_bytes)
         .map_err(|_| Error::InvalidData)
+}
+pub fn format_as_hex(value: u32) -> String {
+    format!("0x{:08X}", value)
 }

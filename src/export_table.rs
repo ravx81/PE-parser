@@ -1,5 +1,3 @@
-use core::slice;
-
 use serde::Serialize;
 
 use crate::{errors::{Error, Result}, parser::PeFile};
