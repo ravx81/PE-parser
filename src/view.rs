@@ -7,10 +7,8 @@ use chrono::prelude::DateTime;
 use chrono::Utc;
 use std::time::{UNIX_EPOCH, Duration};
 use std::path::Path;
-use std::collections::HashMap;
 use serde::Serialize;
-use crate::utils::{read_u16, read_u32, format_as_hex};
-use crate::errors::{Error, Result};
+use crate::utils::{read_u16, format_as_hex};
 
 #[derive(Serialize)]
 pub struct Parsed<'a> {
@@ -124,14 +122,18 @@ impl<'a> Parsed<'a> {
     
     pub fn architecture(&self) -> &'static str {
         let machine_offset = self.raw.e_lfanew + 4;
-    
-        let raw_arch = u16::from_le_bytes(self.raw.buffer[machine_offset..machine_offset+2 ].try_into().expect("machine field out of bounds"));    
+        
+        let raw_arch = match read_u16(&self.raw.buffer, machine_offset) {
+            Ok(value) => value,
+            Err(_) => return "Unknown architecture",
+        };
+        
         match raw_arch {
             0x014c => "x86 (32‑bit)",
             0x8664 => "x64 (64‑bit)",
             0x1c0  => "ARM",
             0xaa64 => "ARM64",
-            _      => "Unknowed architecture",
+            _      => "Unknown architecture",
         }
     }
     
@@ -191,25 +193,19 @@ impl<'a> Parsed<'a> {
         }
         results
     }
-    pub fn detect_type(&self, path: &Path){
-        let pe_extensions= HashMap::from([
-                ("exe", "Executable (EXE)"),
-                ("dll", "Dynamic-Link Library (DLL)"),
-                ("sys", "System Driver (SYS)"),
-                ("ocx", "ActiveX Control (OCX)"),
-                ("scr", "Screensaver (SCR)"),
-                ("cpl", "Control Panel Applet (CPL)"),
-                ("efi", "UEFI Application (EFI)"),
-            ]);
-        if let Some(extension) = path.extension().and_then(|e| e.to_str()){
-            if let Some(description) = pe_extensions.get(extension){
-                println!("File type {}", description);
-            }else{
-                println!("It's not PE file. ");
-            }
-        }else{
-            println!("No extension");
-        }
+    pub fn detect_type(path: &Path) -> Option<String> {
+        path.extension()
+            .and_then(|e| e.to_str())     
+            .map(|ext| match ext {
+                "exe" => "Executable (EXE)".into(),
+                "dll" => "Dynamic-Link Library (DLL)".into(),
+                "sys" => "System Driver (SYS)".into(),
+                "ocx" => "ActiveX Control (OCX)".into(),
+                "scr" => "Screensaver (SCR)".into(),
+                "cpl" => "Control Panel Applet (CPL)".into(),
+                "efi" => "UEFI Application (EFI)".into(), 
+                other => other.to_string(),
+            })
     }
     fn parse_section_flags(&self, flags: &u32) -> Vec<&'static str> {
         let mut parsed_flags: Vec<&'static str> = Vec::new();

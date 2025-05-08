@@ -1,7 +1,9 @@
 [package]
 name = "pe-parser"
+authors = ["ravx81 <nightravenx81@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
+description = "A Rust library to analyze PE (Portable Executable) files."
 [dependencies]
 chrono = "0.4"
 serde = {version = "1.0", features = ["derive"]}

@@ -11,7 +11,6 @@ use pe_parser::view::Parsed;
 fn test_os_version(){
     let path = Path::new("D:\\test");
     let pe = PeFile::parse(path).expect("Failed");
-    pe.parsed().detect_type(path);
 }
 #[test]
 fn parse_section_header(){

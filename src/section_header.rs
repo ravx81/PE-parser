@@ -1,5 +1,5 @@
-use crate::{headers::{FileHeader, SectionHeader}};
-use std::{fs::File, ptr};
+use crate::headers::{FileHeader, SectionHeader};
+use std::ptr;
 use crate::errors::Result;
 impl SectionHeader{
     pub fn parse_section_headers(buffer: &[u8], file_header: &FileHeader, e_lfanew: usize, ) -> Result<Vec<SectionHeader>>{

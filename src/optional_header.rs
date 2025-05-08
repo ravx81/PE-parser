@@ -1,13 +1,14 @@
 use crate::headers::{OptionalHeader32, OptionalHeader64, OptionalHeader, FileHeader, DataDirectory};
 use std::ptr;
 use crate::errors::{Error, Result};
+use crate::utils::read_u16;
 
 impl OptionalHeader {
     pub fn parse_optional_header(buffer: &[u8], e_lfanew: usize) -> Result<OptionalHeader> {
         let fh_offset = e_lfanew + 4;
         let oh_offset: usize = fh_offset + std::mem::size_of::<FileHeader>();
         
-        let magic = u16::from_le_bytes(buffer[oh_offset..oh_offset+2].try_into().unwrap());
+        let magic = read_u16(&buffer, oh_offset)?;
     
         let optional_header: OptionalHeader = match magic {
             0x10B => OptionalHeader::Header32(unsafe {
