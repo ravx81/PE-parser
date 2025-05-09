@@ -3,7 +3,7 @@ use crate::headers::{DosHeader, FileHeader, OptionalHeader, SectionHeader, PE_SI
 use crate::view::Parsed;
 use serde::Serialize;
 use crate::errors::{Error, Result};
-use crate::utils::{read_u32, read_u16};
+use crate::utils::read_u32;
 
 /// Loaded PE file with its main headers and sections.
 #[derive(Serialize)]
@@ -47,7 +47,7 @@ impl PeFile {
     /// Read a PE file from `path`, parse headers and sections, and validate signature.
     ///
     /// # Errors
-    /// Returns an error if I/O fails, headers are malformed, or validation fails.
+    /// Returns an error if I/O fails, headers are malformed, or validation fails. If everything is great: return PE structure.
     pub fn parse(path: &Path) -> Result<Self> {
         let buffer         = std::fs::read(path)?;
         let dos_header     = DosHeader::parse(&buffer)?;

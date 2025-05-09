@@ -4,56 +4,76 @@ use crate::parser::PeFile;
 use crate::errors::{Error, Result};
 use crate::utils::{rva_to_offset, read_u32};
 
-
+/// One entry in the PE import table.
 #[derive(Debug, Serialize)]
 pub struct ImportEntry {
+    /// RVA of the original import lookup table (first thunk).
     pub original_first_thunk: u32,
+    /// Time of first linking.
     pub time_date_stamp: u32,
+    /// Index of the forwarder chain.
     pub forwarder_chain: u32,
+    /// RVA of the ASCII name of the imported DLL.
     pub name: u32,
+    /// RVA of the import address table (first thunk for IAT).
     pub first_thunk: u32,
 }
-// to get into import_table, we have first get rva, next find the right section and calculate offset.
+
+/// Parse the import table from a PE file and return its entries.
+///
+/// # Errors
+/// Returns `Error::InvalidTableOffset` if the import directory RVA or size
+/// does not map into the file buffer, or if any read goes out of bounds.
 pub fn parse_import_table(pe: &PeFile) -> Result<Vec<ImportEntry>> {
-    let import_data_directory = pe.optional_header.data_directory()[1];
-    let rva = import_data_directory.virtual_address;
-    let size = import_data_directory.size as usize;
+    // Locate the import data directory (second directory entry)
+    let import_dir = pe.optional_header.data_directory()[1];
+    let rva = import_dir.virtual_address;
+    let size = import_dir.size as usize;
 
-    let import_table_offset = rva_to_offset(&pe, rva).ok_or(Error::InvalidTableOffset)?;
-    let slice_bytes = pe.buffer.get(import_table_offset..import_table_offset + size).ok_or(Error::InvalidTableOffset)?;
+    // Map RVA to file offset
+    let offset = rva_to_offset(pe, rva)
+        .ok_or(Error::InvalidTableOffset)?;
 
-    const DESCRIPTOR_SIZE: usize = 5 * 4; // 5 fields every field has 4 bytes
-    let mut position = 0; 
+    // Ensure the slice is within buffer bounds
+    let slice = pe.buffer
+        .get(offset..offset + size)
+        .ok_or(Error::InvalidTableOffset)?;
+    /// Five u32 fields, every has 4 bytes.
+    const ENTRY_SIZE: usize = 5 * 4; 
+    let mut entries = Vec::new();
+    let mut pos = 0;
 
-    let mut import_table_structure: Vec<ImportEntry> = Vec::new();
-
-    while position * DESCRIPTOR_SIZE < slice_bytes.len() {
-        let start = position * DESCRIPTOR_SIZE;
-        let end = start + DESCRIPTOR_SIZE;
-        let block = &slice_bytes[start..end];
+    // Iterate directory entries until an all-zero terminator.
+    while pos * ENTRY_SIZE < slice.len() {
+        let start = pos * ENTRY_SIZE;
+        let block = &slice[start..start + ENTRY_SIZE];
 
         let original_first_thunk = read_u32(block, 0)?;
-        let time_date_stamp = read_u32(block, 4)?;
-        let forwarder_chain = read_u32(block, 8)?;
-        let name = read_u32(block, 12)?;
-        let first_thunk = read_u32(block, 16)?;
+        let time_date_stamp     = read_u32(block, 4)?;
+        let forwarder_chain     = read_u32(block, 8)?;
+        let name                = read_u32(block, 12)?;
+        let first_thunk         = read_u32(block, 16)?;
 
-        //last descripctor record has all fields == 0, which marks the end of the import table
-        if original_first_thunk == 0 && time_date_stamp == 0 && forwarder_chain == 0 && name == 0 && first_thunk == 0 {
+        // Terminator: all five fields zero.
+        if original_first_thunk == 0
+            && time_date_stamp     == 0
+            && forwarder_chain     == 0
+            && name                == 0
+            && first_thunk         == 0
+        {
             break;
         }
 
-        let import_entry = ImportEntry {
+        entries.push(ImportEntry {
             original_first_thunk,
             time_date_stamp,
             forwarder_chain,
             name,
             first_thunk,
-        };
-        import_table_structure.push(import_entry);
+        });
 
-        position += 1;
+        pos += 1;
     }
-    Ok(import_table_structure)
-}
 
+    Ok(entries)
+}

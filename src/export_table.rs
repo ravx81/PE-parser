@@ -29,12 +29,11 @@ pub struct ExportEntry {
 /// Returns `Error::InvalidTableOffset` if the export directory RVA or size.
 /// does not map into the file buffer, or if any field read goes out of bounds.
 pub fn parse_export_table(pe: &PeFile) -> Result<Vec<ExportEntry>> {
-    // Locate the export data directory
+    // Locate the export data directory (for export it's in data_directory[0])
     let export_data_directory = pe.optional_header.data_directory()[0];
     let rva  = export_data_directory.virtual_address;
     let size = export_data_directory.size as usize;
 
-    // Map RVA to file offset.
     let export_table_offset = rva_to_offset(pe, rva)
         .ok_or(Error::InvalidTableOffset)?;
 
