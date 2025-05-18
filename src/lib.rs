@@ -8,7 +8,8 @@ pub mod dos_header;
 pub mod file_header;
 pub mod section_header;
 pub mod optional_header;
-
 pub mod view;
 
 pub use errors::{Error, Result};
+pub use parser::PeFile;
+pub use view::Parsed;

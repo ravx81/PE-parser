@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/section_header.rs`."><title>section_header.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="pe_parser" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">pe_parser/</div>section_header.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::headers::{FileHeader, SectionHeader};
+<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::ptr;
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::errors::Result;
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">impl </span>SectionHeader{
+<a href=#5 id=5 data-nosnippet>5</a>     <span class="doccomment">/// Parse all section headers declared in the COFF FileHeader.
+<a href=#6 id=6 data-nosnippet>6</a>    ///
+<a href=#7 id=7 data-nosnippet>7</a>    /// * `buffer` – complete PE image in memory.
+<a href=#8 id=8 data-nosnippet>8</a>    /// * `file_header` – already parsed COFF FileHeader containing
+<a href=#9 id=9 data-nosnippet>9</a>    ///   `number_of_sections` and `size_of_optional_header`.
+<a href=#10 id=10 data-nosnippet>10</a>    /// * `e_lfanew` – offset from DOS header to PE signature.
+<a href=#11 id=11 data-nosnippet>11</a>    ///
+<a href=#12 id=12 data-nosnippet>12</a>    /// Calculates the start of the section table as:
+<a href=#13 id=13 data-nosnippet>13</a>    /// `e_lfanew + 4 + size_of::&lt;FileHeader&gt;() + file_header.size_of_optional_header as usize`.
+<a href=#14 id=14 data-nosnippet>14</a>    /// Then allocates a Vec and reads each `SectionHeader` via `ptr::read_unaligned`.
+<a href=#15 id=15 data-nosnippet>15</a>    ///
+<a href=#16 id=16 data-nosnippet>16</a>    /// # Safety
+<a href=#17 id=17 data-nosnippet>17</a>    ///
+<a href=#18 id=18 data-nosnippet>18</a>    /// Uses unaligned, direct memory reads. Caller must ensure:
+<a href=#19 id=19 data-nosnippet>19</a>    /// - `buffer.len() &gt;= section_offset + number_of_sections * size_of::&lt;SectionHeader&gt;()`
+<a href=#20 id=20 data-nosnippet>20</a>    /// - The bytes in that range are valid `SectionHeader` entries.
+<a href=#21 id=21 data-nosnippet>21</a>    </span><span class="kw">pub fn </span>parse_section_headers(buffer: <span class="kw-2">&amp;</span>[u8], file_header: <span class="kw-2">&amp;</span>FileHeader, e_lfanew: usize, ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SectionHeader&gt;&gt;{
+<a href=#22 id=22 data-nosnippet>22</a>        <span class="comment">//section_offset = e_lfanew + PE_signature... 
+<a href=#23 id=23 data-nosnippet>23</a>        </span><span class="kw">let </span>section_offset = e_lfanew + <span class="number">4 </span>+ size_of::&lt;<span class="kw">crate</span>::headers::FileHeader&gt;() + file_header.size_of_optional_header <span class="kw">as </span>usize;
+<a href=#24 id=24 data-nosnippet>24</a>        <span class="kw">let </span>number_of_sections = file_header.number_of_sections <span class="kw">as </span>usize;
+<a href=#25 id=25 data-nosnippet>25</a>        <span class="kw">let </span><span class="kw-2">mut </span>sections = Vec::with_capacity(number_of_sections);
+<a href=#26 id=26 data-nosnippet>26</a>    
+<a href=#27 id=27 data-nosnippet>27</a>        <span class="comment">// first section_header stars here
+<a href=#28 id=28 data-nosnippet>28</a>        </span><span class="kw">let </span>base_ptr = <span class="kw">unsafe </span>{ buffer.as_ptr().add(section_offset) <span class="kw">as </span><span class="kw-2">*const </span>SectionHeader};
+<a href=#29 id=29 data-nosnippet>29</a>    
+<a href=#30 id=30 data-nosnippet>30</a>        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..number_of_sections{
+<a href=#31 id=31 data-nosnippet>31</a>            <span class="kw">let </span>ptr_section = <span class="kw">unsafe </span>{base_ptr.add(i)};
+<a href=#32 id=32 data-nosnippet>32</a>    
+<a href=#33 id=33 data-nosnippet>33</a>            <span class="kw">let </span>section = <span class="kw">unsafe </span>{ptr::read_unaligned(ptr_section)};
+<a href=#34 id=34 data-nosnippet>34</a>    
+<a href=#35 id=35 data-nosnippet>35</a>            sections.push(section);
+<a href=#36 id=36 data-nosnippet>36</a>        }
+<a href=#37 id=37 data-nosnippet>37</a>        <span class="prelude-val">Ok</span>(sections)
+<a href=#38 id=38 data-nosnippet>38</a>    }
+<a href=#39 id=39 data-nosnippet>39</a>}</code></pre></div></section></main></body></html>
