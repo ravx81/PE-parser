@@ -15,9 +15,9 @@ impl OptionalHeader {
         let oh_offset: usize = fh_offset + std::mem::size_of::<FileHeader>();
         
         let magic = read_u16(&buffer, oh_offset)?;
-        /// Unsafe read: caller must ensure
-        /// 1. `buffer.len() >= e_lfanew + 4 + size_of::<FileHeader>() + size_of::<OptionalHeaderXX>()`  
-        /// 2. `buffer` really contains a valid PE image so offsets match up.
+        // Unsafe read: caller must ensure
+        // 1. `buffer.len() >= e_lfanew + 4 + size_of::<FileHeader>() + size_of::<OptionalHeaderXX>()`  
+        // 2. `buffer` really contains a valid PE image so offsets match up.
         let optional_header: OptionalHeader = match magic {
             0x10B => OptionalHeader::Header32(unsafe {
                 ptr::read_unaligned(buffer.as_ptr().add(oh_offset) as *const OptionalHeader32)
