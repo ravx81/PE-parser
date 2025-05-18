@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["PE_SIGNATURE"],"enum":["OptionalHeader"],"struct":["DataDirectory","DosHeader","FileHeader","NtHeaders32","NtHeaders64","OptionalHeader32","OptionalHeader64","SectionHeader"]};

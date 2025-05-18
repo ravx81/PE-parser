@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["parse_export_table"],"struct":["ExportEntry"]};
