@@ -1,7 +1,7 @@
 [package]
-name = "parsey"
+name = "parsey_rs"
 authors = ["ravx81 <nightravenx81@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A Rust library to analyze PE (Portable Executable) files."
 license = "MIT OR Apache-2.0"
