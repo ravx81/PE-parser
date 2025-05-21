@@ -4,10 +4,12 @@ authors = ["ravx81 <nightravenx81@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
 description = "A Rust library to analyze PE (Portable Executable) files."
-
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/ravx81/parsey_rs"
 
 [lib]
-name = "parsey"
+name = "parsey_rs"
 path = "src/lib.rs"
 
 [dependencies]

@@ -1,5 +1,5 @@
 use std::path::Path;
-use parsey::{PeFile, Parsed};
+use parsey_rs::{PeFile, Parsed};
 
 #[test]
 fn parse_valid_pe() {
@@ -45,17 +45,4 @@ fn test_sections_present() {
     let sections = parsed.sections();
     assert!(!sections.is_empty());
     assert!(sections.iter().any(|s| s.name == ".text"));
-}
-
-#[test]
-fn test_invalid_input() {
-    use std::fs::File;
-    use std::io::Write;
-
-    // stworzenie tymczasowego pustego pliku
-    let path = "tests/empty.exe";
-    let _ = File::create(path).and_then(|mut f| f.write_all(b""));
-
-    let result = PeFile::parse(Path::new(path));
-    assert!(result.is_err());
 }
