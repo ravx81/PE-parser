@@ -15,10 +15,8 @@ fn test_timestamp_and_subsystem() {
     let path = Path::new("tests/test.exe");
     let pe = PeFile::parse(path).unwrap();
     let parsed = Parsed::new(&pe);
-
     let timestamp = parsed.timestamp();
     let subsystem = parsed.subsystem();
-
     assert!(!timestamp.is_empty());
     assert!(subsystem.contains("Windows") || subsystem == "Unknown number");
 }
