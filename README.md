@@ -13,6 +13,11 @@
 - 🔧 Zero dependencies on OS APIs — pure buffer parsing
 
 ---
+## Documentation
+
+📚 [View full documentation on docs.rs](https://docs.rs/parsey_rs)
+
+You can also check more friendly documentation in directory "docs".
 
 ## Usage
 
